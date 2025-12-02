@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import MoodSelectorScreen from './screens/MoodSelectorScreen.jsx';
+import EnvironmentSelectionScreen from './screens/EnvironmentSelectionScreen.jsx';
 import MusicDirectionScreen from './screens/MusicDirectionScreen.jsx';
 import GeneratingScreen from './screens/GeneratingScreen.jsx';
-import PlaybackScreen from './screens/PlaybackScreen.jsx';
 import PlaybackFeedbackScreen from './screens/PlaybackFeedbackScreen.jsx';
-import PlaybackCorrectionScreen from './screens/PlaybackCorrectionScreen.jsx';
 
-const SCREENS = ['mood-selector', 'music-direction', 'generating', 'playback', 'playback-feedback', 'playback-correction'];
+const SCREENS = ['mood-selector', 'environment-selection', 'music-direction', 'generating', 'playback-feedback'];
 
 export default function App() {
   const [currentScreenIndex, setCurrentScreenIndex] = useState(0);
@@ -25,13 +24,12 @@ export default function App() {
     <div className="app-root">
       <div className="app-shell">
         {currentId === 'mood-selector' && <MoodSelectorScreen onNext={goNext} />}
+        {currentId === 'environment-selection' && <EnvironmentSelectionScreen onNext={goNext} />}
         {currentId === 'music-direction' && <MusicDirectionScreen onNext={goNext} />}
         {currentId === 'generating' && <GeneratingScreen onNext={goNext} onCancel={goPrev} />}
-        {currentId === 'playback' && <PlaybackScreen onNext={goNext} />}
         {currentId === 'playback-feedback' && (
-          <PlaybackFeedbackScreen onPositive={() => {}} onNegative={goNext} />
+          <PlaybackFeedbackScreen onRegenerate={() => setCurrentScreenIndex(0)} />
         )}
-        {currentId === 'playback-correction' && <PlaybackCorrectionScreen />}
       </div>
     </div>
   );
