@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import PlayBtn from '../components/PlayBtn.jsx';
+import DurationBar from '../components/DurationBar.jsx';
+import DurationNum from '../components/DurationNum.jsx';
 
 const EMOTION_COLORS = {
   anxious: { inner: '#FFE0D9', outer: '#FFD0C4' },
@@ -13,10 +16,10 @@ function getEmotionFromCoords(nx, ny) {
   if (distance < 0.2) {
     return 'neutral';
   }
-  if (nx < 0 && ny > 0) return 'anxious'; // 左上
-  if (nx > 0 && ny > 0) return 'energetic'; // 右上
-  if (nx < 0 && ny < 0) return 'down'; // 左下
-  return 'relaxed'; // 右下
+  if (nx < 0 && ny > 0) return 'anxious';
+  if (nx > 0 && ny > 0) return 'energetic';
+  if (nx < 0 && ny < 0) return 'down';
+  return 'relaxed';
 }
 
 const EMOTION_LABELS = {
@@ -28,25 +31,55 @@ const EMOTION_LABELS = {
 };
 
 function PlayerCard() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration] = useState(120);
+  const intervalRef = useRef(null);
+
+  const handlePlayPause = () => {
+    setIsPlaying((prev) => !prev);
+  };
+
+  const handleSeek = (progress) => {
+    const newTime = progress * duration;
+    setCurrentTime(newTime);
+  };
+
+  useEffect(() => {
+    if (isPlaying) {
+      intervalRef.current = setInterval(() => {
+        setCurrentTime((prev) => {
+          if (prev >= duration) {
+            setIsPlaying(false);
+            return duration;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isPlaying, duration]);
+
   return (
     <div className="player-card">
       <div className="player-thumb" />
       <div className="player-main">
         <div className="player-text">
-          <p className="player-title">Song Title</p>
-          <div className="player-subtitle">
-            <p style={{ margin: 0 }}>System interpretation:</p>
-            <p style={{ margin: '4px 0 0' }}>Soft · Low energy · Early morning</p>
-          </div>
+          <p className="player-title">Soft · Low energy · Early morning</p>
         </div>
         <div className="player-controls">
-          <button type="button" className="player-play">
-            ▶
-          </button>
-          <div className="player-bar">
-            <div className="player-bar-progress" />
-          </div>
-          <span className="player-time">00:00</span>
+          <PlayBtn state={isPlaying ? 'pause' : 'play'} onClick={handlePlayPause} />
+          <DurationBar currentTime={currentTime} duration={duration} onSeek={handleSeek} />
+          <DurationNum seconds={currentTime} />
         </div>
       </div>
     </div>
@@ -71,9 +104,25 @@ function SuccessModal({ onClose, onDownload, onRegenerate }) {
   );
 }
 
-export default function PlaybackFeedbackScreen({ onPositive, onNegative }) {
+function CorrectionSavedModal({ onExplore }) {
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h3 className="modal-title">New mood mapping has been saved! 🎉 Click the button below to generate another piece of music</h3>
+        <div className="modal-actions">
+          <button type="button" className="modal-button modal-button-primary" onClick={onExplore}>
+            Explore new music piece
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function PlaybackFeedbackScreen({ onPositive, onNegative, onRegenerate }) {
   const [showModal, setShowModal] = useState(false);
-  const [selectedFeedback, setSelectedFeedback] = useState(null); // 'yes' or 'no'
+  const [showCorrectionSavedModal, setShowCorrectionSavedModal] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0.5, y: 0.5 });
   const [hasDragged, setHasDragged] = useState(false);
   const [emotion, setEmotion] = useState('neutral');
@@ -134,13 +183,11 @@ export default function PlaybackFeedbackScreen({ onPositive, onNegative }) {
   };
 
   const handleDownload = () => {
-    // TODO: Implement download logic
     console.log('Download music');
     setShowModal(false);
   };
 
   const handleRegenerate = () => {
-    // TODO: Navigate back to generating or restart flow
     console.log('Regenerate music');
     setShowModal(false);
     if (onRegenerate) {
@@ -149,9 +196,25 @@ export default function PlaybackFeedbackScreen({ onPositive, onNegative }) {
   };
 
   const handleSaveCorrection = () => {
-    // TODO: Save correction and potentially regenerate
-    console.log('Save correction');
-    // Keep the correction section visible after saving
+    const nx = cursorPos.x * 2 - 1;
+    const ny = (cursorPos.y * 2 - 1) * -1;
+    
+    const savedData = {
+      music: 'current_music_data',
+      moodCoords: { x: nx, y: ny },
+      emotion: emotion,
+    };
+    
+    console.log('Saved correction:', savedData);
+    
+    setShowCorrectionSavedModal(true);
+  };
+
+  const handleExploreNewMusic = () => {
+    setShowCorrectionSavedModal(false);
+    if (onRegenerate) {
+      onRegenerate();
+    }
   };
 
   const emotionColors = EMOTION_COLORS[emotion];
@@ -246,6 +309,10 @@ export default function PlaybackFeedbackScreen({ onPositive, onNegative }) {
           onDownload={handleDownload}
           onRegenerate={handleRegenerate}
         />
+      )}
+
+      {showCorrectionSavedModal && (
+        <CorrectionSavedModal onExplore={handleExploreNewMusic} />
       )}
     </div>
   );
